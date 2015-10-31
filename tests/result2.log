@@ -1,9 +1,0 @@
-HTTP/1.0 404 NOT FOUND
-Content-Type: application/json
-Content-Length: 26
-Server: Werkzeug/0.10.4 Python/2.7.9
-Date: Mon, 12 Oct 2015 13:51:02 GMT
-
-{
-  "error": "Not found"
-}
