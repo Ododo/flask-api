@@ -1,0 +1,14 @@
+HTTP/1.0 200 OK
+Content-Type: application/json
+Content-Length: 71
+Server: Werkzeug/0.10.4 Python/2.7.9
+Date: Mon, 12 Oct 2015 13:51:01 GMT
+
+{
+  "users": [
+    {
+      "id": 1, 
+      "name": "Tanguy"
+    }
+  ]
+}
