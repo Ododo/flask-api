@@ -47,9 +47,9 @@ def user_list():
 		abort(400)
 	return jsonify({'users': userList, 'begin': begin, 'length': length})
 
-@app.route("/user", methods=["PUT"])
-def user_put(user_id):
-	user = User.add(user)
+@app.route("/user/", methods=["PUT"])
+def user_put():
+	user = User.add(request.json)
 	if user == None:
 		abort(404)
 	return jsonify({'user': user})
@@ -103,7 +103,7 @@ def user_add_exercice(user_id):
 	did = docker.createDocker(ex_id)
 	nginx.make_config_file(addAct.uuid, did)
 	addAct.did = did
-	addAct.add()
+	db.session.add(addAct)
 	return jsonify({'user': user_id,'exercise': ex_id, 'path': "/ex/"+addAct.uuid}), 201
 	
 @app.route("/user/<int:user_id>/exercise/<int:ex_id>", methods=["DELETE"])
@@ -129,11 +129,15 @@ def bad_request(error):
 
 @app.errorhandler(403)
 def not_found(error):
-	return make_response(jsonify({'error': "Forbidden or not authentificated"}), 404)
+	return make_response(jsonify({'error': "Forbidden or not authentificated"}), 403)
 
 @app.errorhandler(404)
 def not_found(error):
 	return make_response(jsonify({'error': "Not found"}), 404)
+
+@app.errorhandler(409)
+def not_found(error):
+	return make_response(jsonify({'error': "Trying to duplicate entry"}), 409)
 
 @app.errorhandler(500)
 def server_error(error):

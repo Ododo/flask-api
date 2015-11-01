@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from passlib.hash import bcrypt
 import binascii, os
 
-app_secret_salt = "0-6WorldsEUTilt>NATilt"
+app_secret_salt = "12345678901234567890AB"
 exptime = timedelta(hours=12)
 db = SQLAlchemy()
 
@@ -32,6 +32,7 @@ class User(db.Model):
 		self.password = encrypt_pass(password)
 		self.email = email
 		self.level = 1
+		self.creation_date = datetime.utcnow()
 	
 	@staticmethod
 	def getUserList(begin = 0, length = 25):
@@ -40,6 +41,23 @@ class User(db.Model):
 	@staticmethod
 	def getUser(user_id):
 		return User.query.filter(User.id == user_id).first()
+		
+	@staticmethod
+	def add(json):
+		try:
+			print "Checking for user email..."
+			checker = User.query.filter(User.email == json['email']).first()
+			print "Is user email already in DB ? ("+json['email']+")"
+			if checker != None:
+				abort(409)
+			print "Creating user "+json['username']
+			newUser = User(json['username'], json['password'], json['email'])
+			print "Created user "+json['username']
+			db.session.add(newUser)
+			print "Added user "+json['username']+" to database"
+		except Exception:
+			abort(400)
+		
 
 class Exercise(db.Model):
 	__tablename__ = 'exercise'
