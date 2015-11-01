@@ -42,7 +42,7 @@ def user_list():
 		pass
 	if length > 100 :
 		length = 100
-	userList = User.getUserList(begin, length)
+	userList = User.list(begin, length)
 	if userList == None:
 		abort(400)
 	return jsonify({'users': userList, 'begin': begin, 'length': length})
@@ -89,7 +89,7 @@ def user_get_exercise(user_id, ex_id):
 		abort(404)
 	return jsonify(exercise)
 
-@app.route("/user/<int:user_id>/exercise/", methods=["POST"])
+@app.route("/user/<int:user_id>/exercise/", methods=["PUT"])
 def user_add_exercice(user_id):
 	if Token.checkValid(user_id, request.path, request.json) == False:
 		abort(403)
@@ -97,13 +97,7 @@ def user_add_exercice(user_id):
 		ex_id = request.json['exercise']
 	except Exception:
 		abort(400)
-	addAct = users.addExercise(user_id, ex_id)
-	if addAct.status >= 400 :
-		abort(addAct.status)
-	did = docker.createDocker(ex_id)
-	nginx.make_config_file(addAct.uuid, did)
-	addAct.did = did
-	db.session.add(addAct)
+	uuid = Docker.add(user_id, ex_id)
 	return jsonify({'user': user_id,'exercise': ex_id, 'path': "/ex/"+addAct.uuid}), 201
 	
 @app.route("/user/<int:user_id>/exercise/<int:ex_id>", methods=["DELETE"])
@@ -121,7 +115,22 @@ def user_del_exercice(user_id, ex_id):
 		abort(500)
 	return jsonify({'status': "Deleted"}), 202
 
-
+@app.route("/exercise/", methods=["GET"])
+def exercise_list():
+	begin = 0
+	try:
+		begin = request.json['begin']
+	except Exception:
+		pass
+	limit = 25
+	try :
+		limit = request.json['limit']
+	except Exception:
+		pass
+	if limit > 100:
+		limit = 100
+	data = Exercise.list(begin, limit)
+	return jsonify(data)
 
 @app.errorhandler(400)
 def bad_request(error):

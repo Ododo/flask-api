@@ -33,9 +33,9 @@ class User(db.Model):
 		self.email = email
 		self.level = 1
 		self.creation_date = datetime.utcnow()
-	
+		
 	@staticmethod
-	def getUserList(begin = 0, length = 25):
+	def list(begin = 0, length = 25):
 		return User.query.order_by(User.creation_date.asc()).limit(length).offset(begin).all()
 		
 	@staticmethod
@@ -57,6 +57,15 @@ class User(db.Model):
 			print "Added user "+json['username']+" to database"
 		except Exception:
 			abort(400)
+		return newUser
+	
+	
+	def getExerciseList():
+		pass
+			
+	def getExercise(ex_id):
+		pass
+		
 		
 
 class Exercise(db.Model):
@@ -64,6 +73,27 @@ class Exercise(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
 	ex_id = db.Column(db.String(64), unique = True)
 	docker_name = db.Column(db.String(64))
+
+	def __init__(self, ex_id, docker_name):
+		self.ex_id = ex_id
+		self.docker_name = docker_name
+
+	def add(json):
+		try:
+			print "Checking for duplicates"
+			checker = Exercise.query.filter(Exercise.docker_name == json['docker_name']).first()
+			if checker != None:
+				abort(409)
+			print "Creating exercise"
+			newExercise = Exercise(json['exercise'], json['docker_name'])
+			print "Adding exercise to DB"
+			db.session.add(newExercise)
+		except Exception:
+			abort(400)
+		return newExercise
+	
+	def list(begin = 0, length = 25):
+		return Exercise.query.order_by(Exercise.id).limit(length).offset(begin).all()
 
 class Docker(db.Model):
 	__tablename__ = 'docker'
@@ -80,6 +110,28 @@ class Docker(db.Model):
 		self.uuid = uuid
 		self.key = key
 		self.launched = datetime.utcnow()
+		self.valid = False
+	def add(user_id, ex_id):
+		try :
+			print "Checking for " + ex_id + '\'s docker name'
+			docker_name = Exercise.query.filter(Exercise.ex_id == ex_id).select(Exercise.docker_name).first()['docker_name']
+			print "Checking for duplicates for docker pair " + user_id + " / " + ex_id
+			checker = Docker.query.filter(Docker.user_id == user_id).filter(Docker.ex_id == ex_id).first()
+			if checker != None:
+				abort(409)
+			print "Creating new container for user " + user_id + "based on image " + ex_id
+			# TODO check UUID creation + key creation.
+			uuid = "TODO_CREATE_UUID"
+			key = "TODO_CREATE_KEY"
+			d_id = create_docker(docker_name)
+			newDocker = Docker(ex_id, user_id, uuid, key)
+			print "Saving Docker data and relaoding NGINX"
+			create_config_file(uuid, d_id)
+			db.session.add(newDocker)
+			reload_nginx()
+		except Exception :
+			abort(400)
+		return uuid
 
 class Token(db.Model):
 	__tablename__ = 'token'
