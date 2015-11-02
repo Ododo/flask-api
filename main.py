@@ -16,21 +16,21 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://'+db_username+':'+db_password+'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 db.init_app(app)
 
-# ========
-# API BASE
-# ========
+# ============
+# | API ROOT |
+# ============
 
 @app.route("/")
 def root():
-	""" Defines basic data for the API """
+	""" Defines basic info for the API """
 	return jsonify({
 		'title': "Hack in TN api",
 		'version': "0.4b",
 		'help': "/doc.html"})
 
-# ========
-# INIT API
-# ========
+# ============
+# | INIT API |
+# ============
 
 @app.route("/init", methods=["POST"])
 def init():
@@ -38,6 +38,9 @@ def init():
 	db.create_all()
 	return jsonify({'status': "Initialization complete"})
 
+@app.route("/coffee", methods=["POST", "PUT", "GET", "DELETE"])
+def coffee():
+	return make_response(jsonify({'error': "I'm a teapot"}), 418)
 
 # ==============
 # | API : USER |
@@ -83,7 +86,7 @@ def get_user(user_id):
 # PUT
 @app.route("/user/<int:user_id>", methods=["PUT"])
 def put_user(user_id):
-	return jsonify({'status': 'Updated'}), 401
+	return jsonify({'status': 'Not implemented'}), 501
 
 # DELETE
 @app.route("/user/<int:user_id>", methods=["DELETE"])
@@ -91,6 +94,7 @@ def delete_user(user_id):
 	if Token.invalid(user_id, request.path, request.json):
 		if not Token.isLevel(request.path, request.json, Level.ADMIN):
 			abort(403)
+	User.delete(user_id)
 	return jsonify({'status': 'Deleted'}), 402
 
 # ==========================

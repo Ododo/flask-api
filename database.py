@@ -74,6 +74,13 @@ class User(db.Model):
 			abort(500)
 		return newUser
 	
+	@staticmethod
+	def delete(user_id):
+		user = User.get(user_id)
+		if user == None:
+			abort(404)
+		db.session.delete(user)
+		db.session.commit()
 	
 	def getExerciseList(self, begin = 0, limit = 25):
 		try :
