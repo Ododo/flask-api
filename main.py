@@ -45,14 +45,14 @@ def user_list():
 	userList = User.list(begin, length)
 	if userList == None:
 		abort(400)
-	return jsonify({'users': userList, 'begin': begin, 'length': length})
+	return jsonify({'users': map(lambda(e): e.output(), userList), 'begin': begin, 'length': length})
 
 @app.route("/user/", methods=["PUT"])
 def user_put():
 	user = User.add(request.json)
 	if user == None:
 		abort(404)
-	return jsonify({'user': user})
+	return jsonify({'user': user.output()})
 
 @app.route("/user/<int:user_id>", methods=["GET"])
 def user_get(user_id):

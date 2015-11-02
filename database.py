@@ -54,18 +54,25 @@ class User(db.Model):
 			newUser = User(json['username'], json['password'], json['email'])
 			print "Created user "+json['username']
 			db.session.add(newUser)
+			db.session.commit()
 			print "Added user "+json['username']+" to database"
 		except Exception:
 			abort(400)
 		return newUser
 	
 	
-	def getExerciseList():
+	def getExerciseList(self):
 		pass
 			
-	def getExercise(ex_id):
+	def getExercise(self, ex_id):
 		pass
-		
+	
+	def output(self):
+		return {
+			'username': self.username,
+			'id': self.id,
+			'email': self.email
+		}
 		
 
 class Exercise(db.Model):
