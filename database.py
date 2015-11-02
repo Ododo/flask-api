@@ -2,6 +2,8 @@ from flask import abort
 from flask.ext.sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 from passlib.hash import bcrypt
+from enum import Enum
+import docker, nginx
 import binascii, os
 
 app_secret_salt = "12345678901234567890AB"
@@ -18,6 +20,18 @@ def hash_command(token, url, json):
 def generate_token():																							
 	return binascii.hexlify(os.urandom(22))
 
+class Level(Enum):
+	UNID = 0
+	ID = 1
+	ADMIN = 4
+
+# =================
+# |				  |
+# | USER DATABASE |
+# |				  |
+# =================
+
+
 class User(db.Model):
 	__tablename__ = 'user'
 	id = db.Column(db.Integer, primary_key=True)
@@ -31,41 +45,67 @@ class User(db.Model):
 		self.username = username
 		self.password = encrypt_pass(password)
 		self.email = email
-		self.level = 1
+		self.level = Level.UNID
 		self.creation_date = datetime.utcnow()
 		
 	@staticmethod
 	def list(begin = 0, length = 25):
+		""" Return an user list, ordered by ID, from <begin> to <length> """
 		return User.query.order_by(User.creation_date.asc()).limit(length).offset(begin).all()
 		
 	@staticmethod
-	def getUser(user_id):
+	def get(user_id):
+		""" Returns the Database user <user_id> """
 		return User.query.filter(User.id == user_id).first()
 		
 	@staticmethod
 	def add(json):
 		try:
-			print "Checking for user email..."
 			checker = User.query.filter(User.email == json['email']).first()
-			print "Is user email already in DB ? ("+json['email']+")"
-			if checker != None:
-				abort(409)
-			print "Creating user "+json['username']
+		except Exception:
+			abort(500)
+		if checker != None:
+			abort(409)
+		try :
 			newUser = User(json['username'], json['password'], json['email'])
-			print "Created user "+json['username']
 			db.session.add(newUser)
 			db.session.commit()
-			print "Added user "+json['username']+" to database"
 		except Exception:
-			abort(400)
+			abort(500)
 		return newUser
 	
 	
-	def getExerciseList(self):
-		pass
+	def getExerciseList(self, begin = 0, limit = 25):
+		try :
+			list = Exercise.query.outerjoin(Docker).filter(Docker.user_id == self.id).limit(limit).offset(begin).all();
+		except Exception:
+			abort(500);
+		return list;
+			
 			
 	def getExercise(self, ex_id):
-		pass
+		try :
+			exercise = Docker.query.select(Docker.user_id == self.id, Docker.ex_id == ex_id);
+		except Exception:
+			abort(500);
+		try :
+			exercise = exercise.first();
+			if exercise == None:
+				raise Exception
+		except Exception:
+			return {
+				'exercise': ex_id,
+				'user': self.id,
+				'launched': False,
+				'valid': False
+			}
+		else:
+			return {
+				'exercise': ex_id,
+				'user': self.id,
+				'launched': exercise.launched,
+				'valid': exercise.valid
+			}
 	
 	def output(self):
 		return {
@@ -74,6 +114,13 @@ class User(db.Model):
 			'email': self.email
 		}
 		
+
+
+# =====================
+# |					  |
+# | EXERCISE DATABASE |
+# |					  |
+# =====================
 
 class Exercise(db.Model):
 	__tablename__ = 'exercise'
@@ -101,6 +148,17 @@ class Exercise(db.Model):
 	
 	def list(begin = 0, length = 25):
 		return Exercise.query.order_by(Exercise.id).limit(length).offset(begin).all()
+		
+	def get(ex_id):
+		Exercise.query.select(Exercise.id == ex_id).first()
+
+
+
+# ===================
+# |				    |
+# | Docker DATABASE |
+# |				    |
+# ===================
 
 class Docker(db.Model):
 	__tablename__ = 'docker'
@@ -137,8 +195,28 @@ class Docker(db.Model):
 			db.session.add(newDocker)
 			reload_nginx()
 		except Exception :
-			abort(400)
+			abort(500)
 		return uuid
+	
+	def rem(self):
+		try :
+			print "Removing container " + self.uuid
+			print "Removing config file"
+			nginx.del_config_file(self.uuid)
+			print "Closing docker"
+			docker.stop_docker(self.d_id)
+			print "Deleting entry"
+			db.session.remove(self)
+		except Exception:
+			abort(500)
+			
+
+
+# ==================
+# |				   |
+# | TOKEN DATABASE |
+# |				   |
+# ==================
 
 class Token(db.Model):
 	__tablename__ = 'token'
@@ -154,13 +232,32 @@ class Token(db.Model):
 		self.level = User.query.filter(User.id == user_id).first().level
 	
 	@staticmethod
-	def checkValid(user_id, url, json):
+	def invalid(user_id, url, json):
 		token = Token.query.filter(Token.user_id == user_id).order_by(Token.expires.desc()).first()
 		if token == None:
 			return None
 		if token.expires > datetime.utcnow():
 			return None
-		regenerated = custom_app_context.encrypt(oneline(command, json))
+		del json['token']
+		regenerated = custom_app_context.encrypt(oneline(url, json))
 		if regenerated != token:
+			return None
+		return user
+	
+	@staticmethod
+	def isLevel(url, json, level):
+		try :
+			user_id = json['user_id']
+			user_token = json['token']
+		except Exception:
+			return False
+		token = Token.query.filter(Token.user_id == user_id).order_by(Token.expires.desc()).first()
+		if token == None:
+			return None
+		if token.expires > datetime.utcnow():
+			return None
+		del json['token']
+		regenerated = custom_app_context.encrypt(oneline(url, json))
+		if regenerated != user_token:
 			return None
 		return user
