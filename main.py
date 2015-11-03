@@ -213,7 +213,7 @@ def get_token_by_name():
 		abort(404)
 	if user.checkPassword(password):
 		token = Token.add(user.id)
-		return jsonify({'user': user.id, 'token': token.token}), 301
+		return jsonify({'user': user.id, 'token': token.token}), 201
 	else:
 		abort(403)
 
@@ -229,7 +229,7 @@ def get_token_by_id(user_id):
 		abort(404)
 	if user.checkPassword(password):
 		token = Token.add(user.id)
-		return jsonify({'user': user.id, 'token': token.token}), 301
+		return jsonify({'user': user.id, 'token': token.token}), 201
 	else:
 		abort(403)
 
