@@ -59,6 +59,11 @@ class User(db.Model):
 		return User.query.filter(User.id == user_id).first()
 		
 	@staticmethod
+	def getByName(username):
+		""" Returns the Database user <username> """
+		return User.query.filter(User.username == username).first()
+		
+	@staticmethod
 	def add(json):
 		try:
 			checker = User.query.filter(User.email == json['email']).first()
@@ -113,6 +118,9 @@ class User(db.Model):
 				'launched': exercise.launched,
 				'valid': exercise.valid
 			}
+	
+	def checkPassword(self, password):
+		return encrypt_pass(password) == self.password
 	
 	def output(self):
 		return {
@@ -239,17 +247,23 @@ class Token(db.Model):
 		self.level = User.query.filter(User.id == user_id).first().level
 	
 	@staticmethod
+	def add(user_id):
+		token = Token(user_id)
+		db.session.add(token)
+		return token
+	
+	@staticmethod
 	def invalid(user_id, url, json):
 		token = Token.query.filter(Token.user_id == user_id).order_by(Token.expires.desc()).first()
 		if token == None:
-			return None
+			return True
 		if token.expires > datetime.utcnow():
-			return None
+			return True
 		del json['token']
 		regenerated = custom_app_context.encrypt(oneline(url, json))
 		if regenerated != token:
-			return None
-		return user
+			return True
+		return False
 	
 	@staticmethod
 	def isLevel(url, json, level):

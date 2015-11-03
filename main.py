@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, abort, make_response, request
-from database import db, User, Exercise, Docker, Token
+from database import db, Level, User, Exercise, Docker, Token
 import docker
 
 app = Flask(__name__)
@@ -114,6 +114,8 @@ def user_list_exercises(user_id):
 		abort(403)
 	try :
 		user = User.get(user_id)
+		if user == None:
+			abort(404)
 	except Exception:
 		abort(404);
 	exerciseList = user.getExerciseList(begin, length);
@@ -193,6 +195,43 @@ def get_exercise(ex_id):
 	if data == None:
 		abort(404)
 	return jsonify(data)
+
+# ================
+# | API : Tokens |
+# ================
+
+#POST
+@app.route("/token/", methods=["POST"])
+def get_token_by_name():
+	try :
+		username = request.json['username']
+		password = request.json['password']
+	except Exception:
+		abort(400)
+	user = User.getByName(username)
+	if user == None:
+		abort(404)
+	if user.checkPassword(password):
+		token = Token.add(user.id)
+		return jsonify({'user': user.id, 'token': token.token}), 301
+	else:
+		abort(403)
+
+# GET
+@app.route("/token/<int:user_id>", methods=["GET"])
+def get_token_by_id(user_id):
+	try :
+		password = request.json['password']
+	except Exception:
+		abort(400)
+	user = User.get(user_id)
+	if user == None:
+		abort(404)
+	if user.checkPassword(password):
+		token = Token.add(user.id)
+		return jsonify({'user': user.id, 'token': token.token}), 301
+	else:
+		abort(403)
 
 # ==============
 # ERROR HANDLING

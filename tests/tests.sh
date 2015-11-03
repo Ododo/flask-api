@@ -18,5 +18,8 @@ echo -e "\n\n***User 1 exercice 2 (not exists)"
 curl localhost:5000/user/1/exercise/2
 echo -e "\n\n***User 2 exercice 1 (not exists)"
 curl localhost:5000/user/2/exercise/1
+echo -e "\n\n***Delete user 1"
+curl -X DELETE localhost:5000/user/1
+
 
 echo -e "\n\n***END TESTS"
