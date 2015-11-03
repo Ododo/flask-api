@@ -254,6 +254,10 @@ class Token(db.Model):
 	
 	@staticmethod
 	def invalid(user_id, url, json):
+		try :
+			user_token = json['token']
+		except Exception:
+			return False
 		token = Token.query.filter(Token.user_id == user_id).order_by(Token.expires.desc()).first()
 		if token == None:
 			return True
@@ -261,6 +265,7 @@ class Token(db.Model):
 			return True
 		del json['token']
 		regenerated = custom_app_context.encrypt(oneline(url, json))
+		json['token'] = user_token
 		if regenerated != token:
 			return True
 		return False
@@ -279,6 +284,8 @@ class Token(db.Model):
 			return None
 		del json['token']
 		regenerated = custom_app_context.encrypt(oneline(url, json))
+		json['token'] = user_token
 		if regenerated != user_token:
 			return None
+			
 		return user
