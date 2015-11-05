@@ -47,7 +47,7 @@ def coffee():
 # ==============
 
 # LIST
-@app.route("/user/", methods=["GET"])
+@app.route("/user", methods=["GET"])
 def list_user():
 	""" List all users from <begin> to <length> """
 	begin = 0
@@ -63,10 +63,10 @@ def list_user():
 	userList = User.list(begin, length)
 	if userList == None:
 		abort(400)
-	return jsonify({'users': map(lambda(e): e.output(), userList), 'begin': begin, 'length': length})
+	return jsonify({'users': map(lambda(e): e.output(), userList), 'begin': begin, 'length': len(userList)})
 
 # POST
-@app.route("/user/", methods=["POST"])
+@app.route("/user", methods=["POST"])
 def post_user():
 	""" Add user <user_id> to database """
 	user = User.add(request.json)
@@ -102,7 +102,7 @@ def delete_user(user_id):
 # ==========================
 
 # LIST
-@app.route("/user/<int:user_id>/exercise/", methods=["GET"])
+@app.route("/user/<int:user_id>/exercise", methods=["GET"])
 def user_list_exercises(user_id):
 	begin = 0
 	length = 25
@@ -121,10 +121,14 @@ def user_list_exercises(user_id):
 	exerciseList = user.getExerciseList(begin, length);
 	if exerciseList == None:
 		abort(400)
-	return jsonify({'user': user_id, 'exercises': exerciseList})
+	return jsonify({
+		'user': user_id,
+		'exercises': exerciseList,
+		'begin': begin,
+		'length': length})
 
 # POST
-@app.route("/user/<int:user_id>/exercise/", methods=["POST"])
+@app.route("/user/<int:user_id>/exercise", methods=["POST"])
 def post_user_exercises(user_id):
 	if Token.checkValid(user_id, request.path, request.json) == False:
 		abort(403)
@@ -169,7 +173,7 @@ def delete_user_exercice(user_id, ex_id):
 # ==================
 
 # LIST
-@app.route("/exercise/", methods=["GET"])
+@app.route("/exercise", methods=["GET"])
 def exercise_list():
 	begin = 0
 	length = 25
@@ -180,13 +184,16 @@ def exercise_list():
 	except:
 		abort(403)
 	data = Exercise.list(begin, length)
-	return jsonify(data)
+	return jsonify({
+		'begin': begin, 'length': length,
+		'exercises': data
+	})
 
 
 # POST
-@app.route("/exercise/", methods=["POST"])
+@app.route("/exercise", methods=["POST"])
 def post_exercise():
-	pass
+	abort(503)
 
 # GET
 @app.route("/exercise/<int:ex_id>", methods=["GET"])
@@ -201,7 +208,7 @@ def get_exercise(ex_id):
 # ================
 
 #POST
-@app.route("/token/", methods=["POST"])
+@app.route("/token", methods=["POST"])
 def get_token_by_name():
 	try :
 		username = request.json['username']
@@ -256,6 +263,10 @@ def duplicate_entry(error):
 @app.errorhandler(500)
 def server_error(error):
 	return make_response(jsonify({'error': "Server error"}), 500)
+
+@app.errorhandler(501)
+def server_error(error):
+	return make_response(jsonify({'error': "Service not implemented.", 'description': "This service isn't available. It may become available in the near future"}), 501)
 
 
 

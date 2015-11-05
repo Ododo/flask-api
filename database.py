@@ -14,8 +14,11 @@ def encrypt_pass(password):
 	return bcrypt.encrypt(password, salt=app_secret_salt)
 	
 def hash_command(token, url, json):
-	oneline = url + '\\' + json
-	return bcrypt.encrypt(oneline, salt=token)
+	'''Hash the command using token as salt, returns supposed token'''
+	# TODO finalize command
+	return token;
+	#oneline = url + '\\' + json
+	#return bcrypt.encrypt(oneline, salt=token)
 
 def generate_token():																							
 	return binascii.hexlify(os.urandom(22))
@@ -89,15 +92,26 @@ class User(db.Model):
 	
 	def getExerciseList(self, begin = 0, limit = 25):
 		try :
-			list = Exercise.query.outerjoin(Docker).filter(Docker.user_id == self.id).limit(limit).offset(begin).all();
+			list = Exercise.query.\
+				outerjoin(Docker, Docker.ex_id == Exercise.id).add_columns(Exercise.ex_id, Exercise.name, Exercise.description, Docker.valid, Docker.launched, Docker.uuid).\
+				filter(db.or_(Docker.user_id == self.id, Docker.user_id == None)).\
+				distinct(Exercise.id).limit(limit).offset(begin).all();
 		except Exception:
 			abort(500);
-		return list;
+		return map(lambda elem: {
+				'id': elem.Exercise.ex_id,
+				'name': elem.Exercise.name,
+				'description': elem.Exercise.description,
+				'status': elem.valid,
+				'started': elem.launched,
+				'path': elem.uuid
+			}
+			,list);
 			
 			
 	def getExercise(self, ex_id):
 		try :
-			exercise = Docker.query.select(Docker.user_id == self.id, Docker.ex_id == ex_id);
+			exercise = Docker.query.filter(Docker.user_id == self.id, Docker.ex_id == ex_id);
 		except Exception:
 			abort(500);
 		try :
@@ -141,12 +155,15 @@ class Exercise(db.Model):
 	__tablename__ = 'exercise'
 	id = db.Column(db.Integer, primary_key=True)
 	ex_id = db.Column(db.String(64), unique = True)
+	name = db.Column(db.String(256))
+	description = db.Column(db.Text)
 	docker_name = db.Column(db.String(64))
 
 	def __init__(self, ex_id, docker_name):
 		self.ex_id = ex_id
 		self.docker_name = docker_name
 
+	@staticmethod
 	def add(json):
 		try:
 			print "Checking for duplicates"
@@ -161,12 +178,20 @@ class Exercise(db.Model):
 			abort(400)
 		return newExercise
 	
+	@staticmethod
 	def list(begin = 0, length = 25):
-		return Exercise.query.order_by(Exercise.id).limit(length).offset(begin).all()
+		return map(lambda elem: elem.output(), Exercise.query.order_by(Exercise.id).limit(length).offset(begin).all())
 		
+	@staticmethod
 	def get(ex_id):
 		Exercise.query.select(Exercise.id == ex_id).first()
 
+	def output(self):
+		return {
+			'id': self.ex_id,
+			'name': self.name,
+			'description': self.description
+		}
 
 
 # ===================
@@ -191,6 +216,12 @@ class Docker(db.Model):
 		self.key = key
 		self.launched = datetime.utcnow()
 		self.valid = False
+	
+	@staticmethod
+	def get(user_id, ex_id):
+		return Docker.query.filter(Docker.user_id == user_id).filter(Docker.ex_id == ex_id).first()
+	
+	@staticmethod
 	def add(user_id, ex_id):
 		try :
 			print "Checking for " + ex_id + '\'s docker name'
@@ -198,7 +229,7 @@ class Docker(db.Model):
 			print "Checking for duplicates for docker pair " + user_id + " / " + ex_id
 			checker = Docker.query.filter(Docker.user_id == user_id).filter(Docker.ex_id == ex_id).first()
 			if checker != None:
-				abort(409)
+				newDocker = checker
 			print "Creating new container for user " + user_id + "based on image " + ex_id
 			# TODO check UUID creation + key creation.
 			uuid = "TODO_CREATE_UUID"
@@ -213,6 +244,7 @@ class Docker(db.Model):
 			abort(500)
 		return uuid
 	
+	@staticmethod
 	def rem(self):
 		try :
 			print "Removing container " + self.uuid
@@ -225,6 +257,10 @@ class Docker(db.Model):
 		except Exception:
 			abort(500)
 			
+	def output(self):
+		return {
+			'uuid': self.uuid,
+		}
 
 
 # ==================
