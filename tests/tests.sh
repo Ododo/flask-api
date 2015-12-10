@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo -e "\n\n***User list"
-curl 127.0.0.1:5000/user
+curl localhost:5000/user
 echo -e "\n\n*** User 1 (not exists)"
 curl localhost:5000/user/1
 echo -e "\n\n***Create user"
